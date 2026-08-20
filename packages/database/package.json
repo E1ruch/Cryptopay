@@ -1,0 +1,36 @@
+{
+  "name": "@cryptopay/database",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": ["dist", "generated", "prisma"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "prisma generate && tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "clean": "rm -rf dist generated",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1"
+  },
+  "devDependencies": {
+    "prisma": "^6.2.1",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8",
+    "dotenv": "^16.4.7"
+  }
+}

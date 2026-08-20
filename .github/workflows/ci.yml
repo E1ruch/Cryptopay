@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "9.15.9"
+  # Ephemeral, CI-only values — never real secrets. Satisfies packages/config's
+  # validation (min length / hex format) so the app can boot in tests.
+  DATABASE_URL: postgresql://cryptopay:cryptopay@localhost:5432/cryptopay
+  REDIS_URL: redis://localhost:6379
+  JWT_ACCESS_SECRET: ci-test-jwt-access-secret-aaaaaaaaaaaaaaaaaaaaaaaa
+  JWT_REFRESH_SECRET: ci-test-jwt-refresh-secret-aaaaaaaaaaaaaaaaaaaaaa
+  SESSION_COOKIE_SECRET: ci-test-session-secret-aaaaaaaaaaaaaaaaaaaaaaa
+  CSRF_SECRET: ci-test-csrf-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  API_KEY_PEPPER: ci-test-api-key-pepper-aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000aa"
+  COOKIE_SECURE: "false"
+
+jobs:
+  lint-typecheck-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cryptopay
+          POSTGRES_PASSWORD: cryptopay
+          POSTGRES_DB: cryptopay
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cryptopay -d cryptopay"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable pnpm
+        run: corepack enable && corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm exec turbo run lint
+
+      - name: Typecheck
+        run: pnpm exec turbo run typecheck
+
+      - name: Build
+        run: pnpm exec turbo run build
+
+      - name: Dependency vulnerability scan
+        run: pnpm audit --audit-level=high
+        continue-on-error: true # informational in Phase 0 — see docs/security/SECURITY.md
+
+      - name: Apply database migrations
+        working-directory: packages/database
+        run: pnpm exec prisma migrate deploy
+
+      - name: Unit tests
+        run: pnpm exec turbo run test:unit
+
+      - name: Integration tests
+        run: pnpm exec turbo run test:integration
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: lint-typecheck-test
+
+    strategy:
+      matrix:
+        target:
+          - { name: api, dockerfile: apps/api/Dockerfile }
+          - { name: worker, dockerfile: apps/worker/Dockerfile }
+          - { name: web, dockerfile: apps/web/Dockerfile }
+          - { name: migrate, dockerfile: infrastructure/docker/migrate.Dockerfile }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.target.name }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.target.dockerfile }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.target.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target.name }}

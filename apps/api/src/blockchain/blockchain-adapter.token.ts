@@ -1,0 +1,1 @@
+export const BLOCKCHAIN_ADAPTER = Symbol('BLOCKCHAIN_ADAPTER');

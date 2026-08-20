@@ -1,0 +1,96 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* Accent — Telegram blue */
+  --color-brand-50: #eaf6fe;
+  --color-brand-100: #d2ecfc;
+  --color-brand-200: #a8dcf9;
+  --color-brand-400: #47b8ed;
+  --color-brand-500: #2aabee;
+  --color-brand-600: #229ed9;
+  --color-brand-700: #1b84b8;
+
+  /* Neutrals — blue-tinted grey, biased toward the accent */
+  --color-ink-50: #f5f7fa;
+  --color-ink-100: #edf0f4;
+  --color-ink-200: #e1e5eb;
+  --color-ink-300: #c7cdd6;
+  --color-ink-400: #9aa3b0;
+  --color-ink-500: #707988;
+  --color-ink-600: #545d6b;
+  --color-ink-700: #38414f;
+  --color-ink-800: #232b38;
+  --color-ink-900: #131a24;
+
+  /* Semantic */
+  --color-success-50: #eafbf0;
+  --color-success-500: #34b857;
+  --color-success-600: #299247;
+  --color-danger-50: #fdecec;
+  --color-danger-500: #e5484d;
+  --color-danger-600: #c8393e;
+  --color-warning-50: #fff6e5;
+  --color-warning-500: #f5a623;
+  --color-warning-600: #b6790d;
+
+  /* Radius */
+  --radius-control: 0.875rem; /* 14px — buttons, inputs, pills */
+  --radius-card: 1.25rem; /* 20px — cards, sheets */
+
+  /* Motion — snappy, Telegram-ish ease-out */
+  --ease-snappy: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-up: fade-up 0.5s var(--ease-snappy) both;
+  --animate-slide-up: slide-up 0.45s var(--ease-snappy) both;
+  --animate-scale-in: scale-in 0.35s var(--ease-snappy) both;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+body {
+  background-color: var(--color-ink-50);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

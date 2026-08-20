@@ -1,0 +1,127 @@
+{
+  "common": {
+    "appName": "CryptoPay",
+    "language": "Язык",
+    "loading": "Загрузка…",
+    "submit": "Отправить"
+  },
+  "auth": {
+    "login": {
+      "title": "Вход",
+      "email": "Email",
+      "password": "Пароль",
+      "totpCode": "Код двухфакторной аутентификации",
+      "totpCodeHint": "Введите 6-значный код из приложения-аутентификатора",
+      "submit": "Войти",
+      "submitting": "Выполняется вход…",
+      "noAccount": "Нет аккаунта?",
+      "registerLink": "Создать",
+      "error": "Неверный email или пароль"
+    },
+    "register": {
+      "title": "Создание аккаунта",
+      "email": "Email",
+      "password": "Пароль",
+      "passwordHint": "Минимум 10 символов, с буквой и цифрой",
+      "submit": "Создать аккаунт",
+      "submitting": "Создание аккаунта…",
+      "hasAccount": "Уже есть аккаунт?",
+      "loginLink": "Войти",
+      "success": "Если этот email ещё не зарегистрирован, проверьте почту для подтверждения, затем войдите."
+    }
+  },
+  "dashboard": {
+    "nav": {
+      "overview": "Обзор",
+      "transactions": "Транзакции",
+      "invoices": "Счета",
+      "paymentLinks": "Платёжные ссылки",
+      "apiKeys": "API-ключи",
+      "webhooks": "Вебхуки",
+      "settings": "Настройки"
+    },
+    "overview": {
+      "title": "Обзор",
+      "organization": "Организация",
+      "welcome": "Добро пожаловать в CryptoPay",
+      "noOrganization": "Вы пока не состоите ни в одной организации."
+    },
+    "invoices": {
+      "title": "Счета",
+      "empty": "Пока нет счетов. Создайте счёт через API, чтобы увидеть его здесь.",
+      "amount": "Сумма",
+      "status": "Статус",
+      "created": "Создан",
+      "checkoutLink": "Ссылка на оплату",
+      "copyLink": "Скопировать ссылку",
+      "copied": "Скопировано",
+      "previous": "Назад",
+      "next": "Вперёд",
+      "pageOf": "Страница {page} из {totalPages}",
+      "status_CREATED": "Создан",
+      "status_PENDING": "Ожидает оплаты",
+      "status_DETECTED": "Платёж обнаружен",
+      "status_CONFIRMING": "Подтверждается",
+      "status_PAID": "Оплачен",
+      "status_UNDERPAID": "Недоплата",
+      "status_OVERPAID": "Переплата",
+      "status_EXPIRED": "Истёк",
+      "status_FAILED": "Ошибка",
+      "status_CANCELLED": "Отменён",
+      "status_REFUNDED": "Возвращён"
+    },
+    "apiKeys": {
+      "title": "API-ключи",
+      "empty": "Пока нет API-ключей.",
+      "create": "Создать ключ",
+      "name": "Название",
+      "namePlaceholder": "например, Продакшн-бэкенд",
+      "environment": "Окружение",
+      "scopes": "Права доступа",
+      "creating": "Создание…",
+      "createdWarning": "Скопируйте ключ сейчас — повторно он показан не будет.",
+      "copyLink": "Скопировать",
+      "copied": "Скопировано",
+      "done": "Готово",
+      "prefix": "Ключ",
+      "created": "Создан",
+      "lastUsed": "Последнее использование",
+      "never": "Никогда",
+      "revoke": "Отозвать",
+      "revoked": "Отозван",
+      "revokeConfirm": "Отозвать этот API-ключ? Любая интеграция, использующая его, немедленно перестанет работать.",
+      "cancel": "Отмена"
+    },
+    "webhooks": {
+      "title": "Вебхуки",
+      "empty": "Пока нет вебхук-эндпоинтов.",
+      "addEndpoint": "Добавить эндпоинт",
+      "url": "URL эндпоинта",
+      "urlPlaceholder": "https://example.com/webhooks/cryptopay",
+      "creating": "Добавление…",
+      "createdWarning": "Скопируйте секрет подписи сейчас — повторно он показан не будет.",
+      "copyLink": "Скопировать",
+      "copied": "Скопировано",
+      "done": "Готово",
+      "created": "Добавлен",
+      "revoke": "Отозвать",
+      "revoked": "Отозван",
+      "revokeConfirm": "Отозвать этот вебхук-эндпоинт? CryptoPay перестанет отправлять события на этот URL.",
+      "cancel": "Отмена",
+      "viewDeliveries": "Посмотреть доставки",
+      "hideDeliveries": "Скрыть доставки",
+      "deliveriesTitle": "Последние доставки",
+      "deliveriesEmpty": "Пока нет доставок.",
+      "event": "Событие",
+      "attempt": "Попытка",
+      "status": "Статус",
+      "statusCode": "HTTP-статус",
+      "deliveredAt": "Доставлено",
+      "back": "Назад к вебхукам"
+    },
+    "signOut": "Выйти"
+  },
+  "errors": {
+    "generic": "Что-то пошло не так. Попробуйте снова."
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@cryptopay/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "start": "node dist/main.js",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "bullmq": "^5.34.4",
+    "ioredis": "^5.4.2",
+    "@cryptopay/config": "workspace:*",
+    "@cryptopay/database": "workspace:*",
+    "@cryptopay/logger": "workspace:*",
+    "@cryptopay/shared": "workspace:*",
+    "@cryptopay/crypto": "workspace:*",
+    "@cryptopay/webhooks": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8",
+    "dotenv": "^16.4.7"
+  }
+}
