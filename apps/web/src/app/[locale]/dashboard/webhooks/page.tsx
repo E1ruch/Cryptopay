@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Badge, toneForStatus } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/toast';
 import { CopyIcon, WebhookIcon } from '@/components/ui/icons';
 import { ApiError } from '@/lib/api-client';
 
@@ -47,7 +49,7 @@ export default function WebhooksPage() {
         />
       )}
 
-      {isLoading && !endpoints && <div className="mt-4 h-40 animate-pulse rounded-card bg-ink-100" />}
+      {isLoading && !endpoints && <Skeleton className="mt-4 h-40" />}
 
       {endpoints && endpoints.length === 0 && !formOpen && (
         <Card className="mt-4 animate-fade-up">
@@ -164,6 +166,7 @@ function EndpointRow({
 }) {
   const t = useTranslations('dashboard.webhooks');
   const revokeEndpoint = useRevokeWebhookEndpoint();
+  const { toast } = useToast();
   const revoked = !endpoint.enabled;
 
   return (
@@ -189,7 +192,11 @@ function EndpointRow({
             variant="danger"
             disabled={revokeEndpoint.isPending}
             onClick={() => {
-              if (window.confirm(t('revokeConfirm'))) revokeEndpoint.mutate(endpoint.id);
+              if (!window.confirm(t('revokeConfirm'))) return;
+              revokeEndpoint.mutate(endpoint.id, {
+                onSuccess: () => toast(t('revokeSuccess'), 'success'),
+                onError: (err) => toast(err instanceof ApiError ? err.message : t('revokeSuccess'), 'danger'),
+              });
             }}
           >
             {t('revoke')}
@@ -208,7 +215,7 @@ function DeliveriesList({ endpointId }: { endpointId: string }) {
     <div className="border-t border-ink-100 bg-ink-50/60 px-5 py-4 sm:px-6">
       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-500">{t('deliveriesTitle')}</p>
 
-      {isLoading && <div className="h-16 animate-pulse rounded-control bg-ink-100" />}
+      {isLoading && <Skeleton className="h-16" />}
 
       {deliveries && deliveries.length === 0 && <p className="text-sm text-ink-400">{t('deliveriesEmpty')}</p>}
 

@@ -4,6 +4,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { QueryProvider } from '@/lib/query-client';
+import { ToastProvider } from '@/components/ui/toast';
 import '../globals.css';
 
 export function generateStaticParams() {
@@ -28,7 +29,9 @@ export default async function LocaleLayout({
     <html lang={locale}>
       <body className="antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </QueryProvider>
         </NextIntlClientProvider>
       </body>
     </html>

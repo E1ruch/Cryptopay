@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/toast';
 import { CopyIcon, KeyIcon } from '@/components/ui/icons';
 import { ApiError } from '@/lib/api-client';
 
@@ -43,7 +46,7 @@ export default function ApiKeysPage() {
         />
       )}
 
-      {isLoading && !keys && <div className="mt-4 h-40 animate-pulse rounded-card bg-ink-100" />}
+      {isLoading && !keys && <Skeleton className="mt-4 h-40" />}
 
       {keys && keys.length === 0 && !formOpen && (
         <Card className="mt-4 animate-fade-up">
@@ -130,18 +133,12 @@ function CreateKeyForm({ onCancel, onCreated }: { onCancel: () => void; onCreate
 
         <div>
           <Label htmlFor="key-env">{t('environment')}</Label>
-          <select
+          <Select
             id="key-env"
             value={environment}
-            onChange={(e) => setEnvironment(e.target.value as (typeof API_KEY_ENVIRONMENTS)[number])}
-            className="w-full rounded-control border border-ink-200 bg-ink-50 px-3.5 py-3 text-[15px] text-ink-900 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
-          >
-            {API_KEY_ENVIRONMENTS.map((env) => (
-              <option key={env} value={env}>
-                {env}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => setEnvironment(value as (typeof API_KEY_ENVIRONMENTS)[number])}
+            options={API_KEY_ENVIRONMENTS.map((env) => ({ value: env, label: env }))}
+          />
         </div>
 
         <div>
@@ -186,6 +183,7 @@ function CreateKeyForm({ onCancel, onCreated }: { onCancel: () => void; onCreate
 function ApiKeyRow({ apiKey }: { apiKey: ApiKeyView }) {
   const t = useTranslations('dashboard.apiKeys');
   const revokeKey = useRevokeApiKey();
+  const { toast } = useToast();
   const revoked = Boolean(apiKey.revokedAt);
 
   return (
@@ -211,7 +209,11 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyView }) {
             variant="danger"
             disabled={revokeKey.isPending}
             onClick={() => {
-              if (window.confirm(t('revokeConfirm'))) revokeKey.mutate(apiKey.id);
+              if (!window.confirm(t('revokeConfirm'))) return;
+              revokeKey.mutate(apiKey.id, {
+                onSuccess: () => toast(t('revokeSuccess'), 'success'),
+                onError: (err) => toast(err instanceof ApiError ? err.message : t('revokeSuccess'), 'danger'),
+              });
             }}
           >
             {t('revoke')}

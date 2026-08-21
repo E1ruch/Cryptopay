@@ -6,6 +6,7 @@ import { useInvoices, type InvoiceListItem } from '@/hooks/use-invoices';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge, toneForStatus } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CopyIcon } from '@/components/ui/icons';
 
 export default function InvoicesPage() {
@@ -18,7 +19,7 @@ export default function InvoicesPage() {
     <div>
       <h1 className="mb-6 animate-fade-up text-2xl font-semibold tracking-tight text-ink-900">{t('title')}</h1>
 
-      {isLoading && !data && <div className="h-40 animate-pulse rounded-card bg-ink-100" />}
+      {isLoading && !data && <Skeleton className="h-40" />}
 
       {data && data.data.length === 0 && (
         <Card className="animate-fade-up">

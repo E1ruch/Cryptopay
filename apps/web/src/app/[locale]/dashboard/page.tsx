@@ -1,9 +1,15 @@
 'use client';
 
+import { useState, type FormEvent } from 'react';
 import { useTranslations } from 'next-intl';
-import { useOrganization } from '@/hooks/use-organization';
+import { useCreateOrganization, useOrganization } from '@/hooks/use-organization';
 import { Card } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { BuildingIcon } from '@/components/ui/icons';
 import { ApiError } from '@/lib/api-client';
 
 export default function DashboardOverviewPage() {
@@ -16,15 +22,9 @@ export default function DashboardOverviewPage() {
         {t('title')}
       </h1>
 
-      {isLoading && (
-        <div className="h-40 max-w-md animate-pulse rounded-card bg-ink-100 [animation-delay:80ms]" />
-      )}
+      {isLoading && <Skeleton className="h-40 max-w-md [animation-delay:80ms]" />}
 
-      {error instanceof ApiError && error.status === 403 && (
-        <Card className="max-w-md animate-fade-up [animation-delay:80ms]">
-          <p className="text-sm text-ink-500">{t('noOrganization')}</p>
-        </Card>
-      )}
+      {error instanceof ApiError && error.status === 403 && <CreateOrganizationCard />}
 
       {organization && (
         <StatCard
@@ -35,5 +35,57 @@ export default function DashboardOverviewPage() {
         />
       )}
     </div>
+  );
+}
+
+function CreateOrganizationCard() {
+  const t = useTranslations('dashboard.overview');
+  const createOrganization = useCreateOrganization();
+  const [name, setName] = useState('');
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await createOrganization.mutateAsync(name.trim());
+  }
+
+  return (
+    <Card className="max-w-md animate-fade-up [animation-delay:80ms]">
+      <div className="mb-5 flex items-center gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.85rem] bg-brand-50 text-brand-600">
+          <BuildingIcon className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="text-base font-semibold text-ink-900">{t('createTitle')}</h2>
+          <p className="mt-0.5 text-sm text-ink-500">{t('createSubtitle')}</p>
+        </div>
+      </div>
+
+      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
+        <div>
+          <Label htmlFor="org-name">{t('name')}</Label>
+          <Input
+            id="org-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('namePlaceholder')}
+            minLength={2}
+            maxLength={120}
+            required
+          />
+        </div>
+
+        {createOrganization.error && (
+          <p role="alert" className="rounded-control bg-danger-50 px-3.5 py-2.5 text-sm text-danger-600">
+            {createOrganization.error instanceof ApiError
+              ? createOrganization.error.message
+              : t('createTitle')}
+          </p>
+        )}
+
+        <Button type="submit" disabled={createOrganization.isPending} className="w-full">
+          {createOrganization.isPending ? t('creating') : t('create')}
+        </Button>
+      </form>
+    </Card>
   );
 }

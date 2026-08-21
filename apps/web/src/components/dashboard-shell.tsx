@@ -19,14 +19,15 @@ const NAV_KEYS = [
   'settings',
 ] as const;
 
-// Routes wired up so far — invoices/apiKeys/webhooks land with Phase 1's
-// merchant dashboard (spec §63). transactions/paymentLinks/settings have no
+// Routes wired up so far — invoices/apiKeys/webhooks/settings land with
+// Phase 1's merchant dashboard (spec §63). transactions/paymentLinks have no
 // destination yet, so they stay inert placeholders like Phase 0 left them.
 const NAV_ROUTES: Partial<Record<(typeof NAV_KEYS)[number], string>> = {
   overview: '/dashboard',
   invoices: '/dashboard/invoices',
   apiKeys: '/dashboard/api-keys',
   webhooks: '/dashboard/webhooks',
+  settings: '/dashboard/settings',
 };
 
 function isActiveRoute(pathname: string, route: string): boolean {

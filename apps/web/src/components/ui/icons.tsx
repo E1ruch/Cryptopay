@@ -138,6 +138,24 @@ export function CopyIcon(props: IconProps) {
   );
 }
 
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M6 9.5 12 15.5 18 9.5" />
+    </svg>
+  );
+}
+
+export function BuildingIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M6 20.5V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v15.5" />
+      <path d="M3.5 20.5h17" />
+      <path d="M9.5 8h1M13.5 8h1M9.5 11.5h1M13.5 11.5h1M9.5 15h1M13.5 15h1" />
+    </svg>
+  );
+}
+
 export const NAV_ICONS = {
   overview: HomeIcon,
   transactions: ArrowsIcon,

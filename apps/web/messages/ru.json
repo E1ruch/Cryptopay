@@ -44,7 +44,13 @@
       "title": "Обзор",
       "organization": "Организация",
       "welcome": "Добро пожаловать в CryptoPay",
-      "noOrganization": "Вы пока не состоите ни в одной организации."
+      "noOrganization": "Вы пока не состоите ни в одной организации.",
+      "createTitle": "Создайте организацию",
+      "createSubtitle": "В её рамках вы будете управлять счетами, API-ключами и вебхуками.",
+      "name": "Название организации",
+      "namePlaceholder": "например, ООО «Ромашка»",
+      "create": "Создать организацию",
+      "creating": "Создание…"
     },
     "invoices": {
       "title": "Счета",
@@ -90,6 +96,7 @@
       "revoke": "Отозвать",
       "revoked": "Отозван",
       "revokeConfirm": "Отозвать этот API-ключ? Любая интеграция, использующая его, немедленно перестанет работать.",
+      "revokeSuccess": "API-ключ отозван",
       "cancel": "Отмена"
     },
     "webhooks": {
@@ -107,6 +114,7 @@
       "revoke": "Отозвать",
       "revoked": "Отозван",
       "revokeConfirm": "Отозвать этот вебхук-эндпоинт? CryptoPay перестанет отправлять события на этот URL.",
+      "revokeSuccess": "Вебхук-эндпоинт отозван",
       "cancel": "Отмена",
       "viewDeliveries": "Посмотреть доставки",
       "hideDeliveries": "Скрыть доставки",
@@ -118,6 +126,28 @@
       "statusCode": "HTTP-статус",
       "deliveredAt": "Доставлено",
       "back": "Назад к вебхукам"
+    },
+    "settings": {
+      "title": "Настройки",
+      "organizationTitle": "Организация",
+      "name": "Название организации",
+      "slug": "Слаг",
+      "save": "Сохранить изменения",
+      "saving": "Сохранение…",
+      "saved": "Организация обновлена",
+      "membersTitle": "Участники",
+      "membersEmpty": "Пока нет участников.",
+      "invite": "Пригласить участника",
+      "inviteTitle": "Пригласить участника",
+      "email": "Email",
+      "emailPlaceholder": "coworker@company.com",
+      "role": "Роль",
+      "role_OWNER": "Владелец",
+      "role_ADMIN": "Администратор",
+      "role_MEMBER": "Участник",
+      "inviting": "Приглашение…",
+      "inviteSuccess": "Приглашение отправлено",
+      "cancel": "Отмена"
     },
     "signOut": "Выйти"
   },

@@ -44,7 +44,13 @@
       "title": "Overview",
       "organization": "Organization",
       "welcome": "Welcome to CryptoPay",
-      "noOrganization": "You don't belong to an organization yet."
+      "noOrganization": "You don't belong to an organization yet.",
+      "createTitle": "Create your organization",
+      "createSubtitle": "You'll manage invoices, API keys and webhooks under this organization.",
+      "name": "Organization name",
+      "namePlaceholder": "e.g. Acme Inc.",
+      "create": "Create organization",
+      "creating": "Creating…"
     },
     "invoices": {
       "title": "Invoices",
@@ -90,6 +96,7 @@
       "revoke": "Revoke",
       "revoked": "Revoked",
       "revokeConfirm": "Revoke this API key? Any integration using it will stop working immediately.",
+      "revokeSuccess": "API key revoked",
       "cancel": "Cancel"
     },
     "webhooks": {
@@ -107,6 +114,7 @@
       "revoke": "Revoke",
       "revoked": "Revoked",
       "revokeConfirm": "Revoke this webhook endpoint? CryptoPay will stop sending events to this URL.",
+      "revokeSuccess": "Webhook endpoint revoked",
       "cancel": "Cancel",
       "viewDeliveries": "View deliveries",
       "hideDeliveries": "Hide deliveries",
@@ -118,6 +126,28 @@
       "statusCode": "HTTP status",
       "deliveredAt": "Delivered",
       "back": "Back to webhooks"
+    },
+    "settings": {
+      "title": "Settings",
+      "organizationTitle": "Organization",
+      "name": "Organization name",
+      "slug": "Slug",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "saved": "Organization updated",
+      "membersTitle": "Members",
+      "membersEmpty": "No members yet.",
+      "invite": "Invite member",
+      "inviteTitle": "Invite a member",
+      "email": "Email",
+      "emailPlaceholder": "teammate@company.com",
+      "role": "Role",
+      "role_OWNER": "Owner",
+      "role_ADMIN": "Admin",
+      "role_MEMBER": "Member",
+      "inviting": "Inviting…",
+      "inviteSuccess": "Invitation sent",
+      "cancel": "Cancel"
     },
     "signOut": "Sign out"
   },
