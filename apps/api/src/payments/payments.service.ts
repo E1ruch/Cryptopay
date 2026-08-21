@@ -1,10 +1,15 @@
 import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import { FakeBlockchainAdapter, type BlockchainAdapter, type TokenTransfer } from '@cryptopay/blockchain';
+import { FakeBlockchainAdapter, type TokenTransfer } from '@cryptopay/blockchain';
 import { InvoiceStatus, Prisma, PaymentStatus, type Invoice } from '@cryptopay/database';
-import { assertInvoiceTransition, assertPaymentTransition, evaluatePaymentAmount } from '@cryptopay/payments';
+import {
+  assertInvoiceTransition,
+  assertPaymentTransition,
+  evaluatePaymentAmount,
+  selectMatchingInvoice,
+} from '@cryptopay/payments';
 import { ConflictError, NotFoundError, generateId } from '@cryptopay/shared';
 import type { SimulatePaymentInput } from '@cryptopay/validation';
-import { BLOCKCHAIN_ADAPTER } from '../blockchain/blockchain-adapter.token.js';
+import { BlockchainAdapterRegistry } from '../blockchain/blockchain-adapter-registry.service.js';
 import { ENV, type Env } from '../config/env.provider.js';
 import { PrismaService } from '../database/prisma.service.js';
 
@@ -21,15 +26,27 @@ export type PaymentWithInvoice = Prisma.PaymentGetPayload<typeof paymentWithInvo
 // pushed).
 const TICK_INTERVAL_MS = 1000;
 
+// Phase 1's fake chain only ever had one network — this pipeline keeps that
+// assumption. Phase 2's real detection is per-network on apps/worker's
+// blockchainScan/paymentConfirm queues instead (see class doc comment).
+const FAKE_MODE_NETWORK = 'base';
+
 /**
- * Phase 1's payment pipeline (spec §21/§93). Runs as an in-process interval
- * rather than an apps/worker BullMQ job: FakeBlockchainAdapter's state is
- * in-memory and process-local, so detection must run in the same process
- * that owns the BLOCKCHAIN_ADAPTER instance (this API process, via
- * BlockchainModule). Phase 2's real adapter talks to an RPC — a genuine
- * shared source of truth any process can reach — which is what actually
- * lets this move to apps/worker's already-scaffolded blockchainScan /
- * paymentConfirm queues.
+ * Phase 1's payment pipeline (spec §21/§93), still active in
+ * `BLOCKCHAIN_MODE=fake`. Runs as an in-process interval rather than an
+ * apps/worker BullMQ job: FakeBlockchainAdapter's state is in-memory and
+ * process-local, so detection must run in the same process that owns the
+ * adapter instance (this API process, via BlockchainModule).
+ *
+ * `BLOCKCHAIN_MODE=evm` (Phase 2) disables this class's own polling
+ * entirely — a real RPC is a genuine shared source of truth any process can
+ * reach, so detection/confirmation runs on apps/worker's
+ * blockchainScan/paymentConfirm queues instead
+ * (`apps/worker/src/queues/blockchain-scan.queue.ts`,
+ * `payment-confirm.queue.ts`). Only `simulatePayment`/
+ * `simulatePaymentForCheckout` stay live in both modes, for dev/test
+ * convenience — guarded by the `instanceof FakeBlockchainAdapter` check
+ * below, so they're a no-op against a real adapter regardless of mode.
  */
 @Injectable()
 export class PaymentsService implements OnModuleInit, OnModuleDestroy {
@@ -43,10 +60,11 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(ENV) private readonly env: Env,
-    @Inject(BLOCKCHAIN_ADAPTER) private readonly blockchain: BlockchainAdapter,
+    private readonly blockchainRegistry: BlockchainAdapterRegistry,
   ) {}
 
   onModuleInit(): void {
+    if (this.env.BLOCKCHAIN_MODE !== 'fake') return;
     this.timer = setInterval(() => {
       this.tick().catch((error: unknown) => {
         console.error('payments pipeline tick failed', error);
@@ -97,11 +115,13 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     if (invoice.status !== InvoiceStatus.PENDING) {
       throw new ConflictError(`Invoice is ${invoice.status}, not awaiting payment`);
     }
-    if (!(this.blockchain instanceof FakeBlockchainAdapter)) {
+    const adapter = this.blockchainRegistry.get(invoice.network);
+    if (!(adapter instanceof FakeBlockchainAdapter)) {
       throw new ConflictError('Payment simulation is only available on the fake blockchain adapter');
     }
 
-    this.blockchain.simulatePayment({
+    adapter.simulatePayment({
+      network: invoice.network,
       token: invoice.token,
       toAddress: invoice.paymentAddress,
       amount: new Prisma.Decimal(input.amount ?? invoice.amount),
@@ -141,9 +161,10 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async detectNewPayments(): Promise<void> {
-    const latestBlock = await this.blockchain.getLatestBlock();
-    for (let block = this.lastScannedBlock + 1; block <= latestBlock; block++) {
-      const transfers = await this.blockchain.getTokenTransfers(block);
+    const adapter = this.blockchainRegistry.get(FAKE_MODE_NETWORK);
+    const latestBlock = await adapter.getLatestBlock();
+    if (latestBlock > this.lastScannedBlock) {
+      const transfers = await adapter.getTokenTransfers(this.lastScannedBlock + 1, latestBlock);
       for (const transfer of transfers) {
         await this.tryMatchTransfer(transfer);
       }
@@ -157,20 +178,25 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Matches by payment address alone: each invoice gets one dedicated,
-   * globally-unique address (spec §16, enforced by a DB unique constraint),
-   * so the address itself already identifies the invoice — unlike a real
-   * multi-invoice-per-address scanner, there's no candidate set to
-   * disambiguate with packages/payments' matchesInvoice (that helper is
-   * exercised directly in its own unit tests; Phase 2's real scanner, which
-   * does have to disambiguate across many addresses, is where it gets used
-   * here too).
+   * Phase 2: a merchant's payment address is reused across every invoice on
+   * a network/token (spec §42), so `matchesInvoice` alone can return
+   * several PENDING candidates — `selectMatchingInvoice` (packages/payments)
+   * picks the one whose expected amount exactly matches, falling back to
+   * the oldest pending invoice otherwise. Known limitation: two invoices
+   * pending on the same address for the exact same amount at once aren't
+   * disambiguated further (documented on selectMatchingInvoice itself).
    */
   private async tryMatchTransfer(transfer: TokenTransfer): Promise<void> {
-    const invoice = await this.prisma.invoice.findFirst({
-      where: { paymentAddress: transfer.toAddress, status: InvoiceStatus.PENDING },
+    const candidates = await this.prisma.invoice.findMany({
+      where: {
+        paymentAddress: transfer.toAddress,
+        network: transfer.network,
+        token: transfer.token,
+        status: InvoiceStatus.PENDING,
+      },
     });
-    if (!invoice || invoice.token !== transfer.token) return;
+    const invoice = selectMatchingInvoice(candidates, transfer);
+    if (!invoice) return;
 
     const alreadySeen = await this.prisma.payment.findUnique({
       where: { network_txHash: { network: invoice.network, txHash: transfer.txHash } },
@@ -216,7 +242,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
 
       let confirmations: number;
       try {
-        confirmations = await this.blockchain.getConfirmations(payment.txHash);
+        confirmations = await this.blockchainRegistry.get(payment.network).getConfirmations(payment.txHash);
       } catch (error) {
         if (error instanceof NotFoundError) {
           // FakeBlockchainAdapter's state is in-memory only (spec §93 Phase

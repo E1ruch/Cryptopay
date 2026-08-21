@@ -20,6 +20,8 @@ export {
   type IdempotencyKey,
   type Invoice,
   type Payment,
+  type MerchantWalletAddress,
+  type BlockchainScanCursor,
   type WebhookEndpoint,
   type WebhookEvent,
   type WebhookDelivery,

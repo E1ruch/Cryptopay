@@ -22,7 +22,9 @@
     "@cryptopay/logger": "workspace:*",
     "@cryptopay/shared": "workspace:*",
     "@cryptopay/crypto": "workspace:*",
-    "@cryptopay/webhooks": "workspace:*"
+    "@cryptopay/webhooks": "workspace:*",
+    "@cryptopay/blockchain": "workspace:*",
+    "@cryptopay/payments": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

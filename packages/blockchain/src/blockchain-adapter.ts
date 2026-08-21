@@ -10,6 +10,7 @@ export interface BlockchainTransaction {
 
 export interface TokenTransfer {
   txHash: string;
+  network: string;
   token: string;
   fromAddress: string;
   toAddress: string;
@@ -24,16 +25,19 @@ export interface TokenTransfer {
  * Invoice.network picks which instance to call (spec: "Payment Core must
  * not know how Ethereum, Base, Polygon or Solana internally work").
  *
- * `generateDepositAddress` is not in the spec's illustrative §20 snippet,
- * but every implementation needs it: an Invoice requires a `payment_address`
- * at creation time (spec §16), and how an address is derived is exactly the
- * kind of chain-specific detail this interface exists to hide.
+ * Deposit addresses are **not** part of this interface (Phase 1 had a
+ * `generateDepositAddress()` here — removed in Phase 2). Spec §42 forbids
+ * the platform from generating/holding a key for a deposit address; the
+ * merchant supplies their own address instead (see
+ * `MerchantWalletAddress` / `WalletAddressService`), which is an
+ * organization-level concern, not something a chain adapter should know
+ * about.
  */
 export interface BlockchainAdapter {
-  generateDepositAddress(): string;
   validateAddress(address: string): boolean;
   getLatestBlock(): Promise<number>;
   getTransaction(txHash: string): Promise<BlockchainTransaction | null>;
-  getTokenTransfers(blockNumber: number): Promise<TokenTransfer[]>;
+  /** Ranged scan (inclusive) — one call per tick, not one per block (spec §21 "Block Scanner"). */
+  getTokenTransfers(fromBlock: number, toBlock: number): Promise<TokenTransfer[]>;
   getConfirmations(txHash: string): Promise<number>;
 }

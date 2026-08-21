@@ -37,6 +37,8 @@ export {
 
 export { paginationQuerySchema, type PaginationQuery } from './pagination.schemas.js';
 
+export { setWalletAddressSchema, type SetWalletAddressInput } from './wallet-address.schemas.js';
+
 export {
   metadataSchema,
   METADATA_MAX_KEYS,

@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { BlockchainModule } from '../blockchain/blockchain.module.js';
+import { WalletAddressesModule } from '../wallet-addresses/wallet-addresses.module.js';
 import { InvoicesController } from './invoices.controller.js';
 import { InvoicesService } from './invoices.service.js';
 
 @Module({
-  imports: [BlockchainModule],
+  imports: [WalletAddressesModule],
   controllers: [InvoicesController],
   providers: [InvoicesService],
   exports: [InvoicesService],

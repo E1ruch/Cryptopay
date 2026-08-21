@@ -43,8 +43,11 @@ before Phase 4's production pilot.
   (the stored hash can no longer be reproduced). Merchants would need to
   regenerate keys. Not yet a supported operational path — flag before any
   real merchant onboarding.
-- **ENCRYPTION_KEY**: rotating breaks decryption of existing TOTP secrets.
-  Users with 2FA enabled would need to re-enroll. Same caveat as above.
+- **ENCRYPTION_KEY**: rotating breaks decryption of existing TOTP secrets
+  *and* existing `WebhookEndpoint.secretEnc` values (Phase 1 — same
+  AES-256-GCM key covers both). Users with 2FA enabled would need to
+  re-enroll; merchants would need to re-create every webhook endpoint to
+  get a new signing secret. Same caveat as above.
 
 None of these rotation paths have a zero-downtime migration story yet —
 that's explicitly deferred until it's needed (YAGNI), but is flagged here so

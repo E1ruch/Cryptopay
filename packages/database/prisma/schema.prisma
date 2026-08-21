@@ -161,6 +161,7 @@ model Organization {
   payments         Payment[]
   webhookEndpoints WebhookEndpoint[]
   webhookEvents    WebhookEvent[]
+  walletAddresses  MerchantWalletAddress[]
 
   @@map("organizations")
 }
@@ -275,10 +276,13 @@ model Invoice {
   token    String
   network  String
 
-  // Globally unique — the scanner matches an incoming transfer to exactly
-  // one invoice by this address alone (packages/payments matchesInvoice).
-  // One dedicated address per invoice, never reused (spec §16).
-  paymentAddress String @unique @map("payment_address")
+  // The organization's own MerchantWalletAddress for (network, token) —
+  // Phase 2 onward this is reused across every invoice on that
+  // network/token (spec §42: no server-generated/held deposit addresses).
+  // The scanner therefore matches by network+token+address *and* the
+  // pending invoice's expected amount (packages/payments matchesInvoice),
+  // not by address alone.
+  paymentAddress String @map("payment_address")
 
   successUrl String? @map("success_url")
   cancelUrl  String? @map("cancel_url")
@@ -299,6 +303,7 @@ model Invoice {
   @@unique([organizationId, externalId])
   @@index([organizationId])
   @@index([status])
+  @@index([paymentAddress, status])
   @@map("invoices")
 }
 
@@ -339,6 +344,45 @@ model Payment {
   @@index([invoiceId])
   @@index([organizationId])
   @@map("payments")
+}
+
+// The merchant's own receiving address for a given (network, token) — spec
+// §42: the platform never generates or holds a key for this, the merchant
+// supplies it (public address only) and it's reused across every invoice on
+// that network/token. `InvoicesService.create()` reads this to populate
+// `Invoice.paymentAddress`; creation fails if unset for the invoice's
+// network/token.
+model MerchantWalletAddress {
+  id             String @id @default(cuid())
+  organizationId String @map("organization_id")
+
+  network String
+  token   String
+  address String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, network, token])
+  @@map("merchant_wallet_addresses")
+}
+
+// Durable block-scan watermark for apps/worker's blockchainScan queue (Phase
+// 2) — replaces Phase 1's in-process `lastScannedBlock` field, since a
+// worker process can restart independently of apps/api and has no in-memory
+// state to rely on. One row per network.
+model BlockchainScanCursor {
+  network          String @id
+  // -1 means "nothing scanned yet" (matches Phase 1's in-process
+  // lastScannedBlock convention) — block numbers are 0-based, so a plain 0
+  // default would wrongly mean "block 0 already scanned" and skip it.
+  lastScannedBlock BigInt @default(-1) @map("last_scanned_block")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("blockchain_scan_cursors")
 }
 
 // ─── Webhooks (spec §27–§29, §61) ─────────────────────────────────────────

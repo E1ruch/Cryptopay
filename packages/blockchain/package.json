@@ -22,7 +22,8 @@
   },
   "dependencies": {
     "@cryptopay/database": "workspace:*",
-    "@cryptopay/shared": "workspace:*"
+    "@cryptopay/shared": "workspace:*",
+    "viem": "^2.21.54"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

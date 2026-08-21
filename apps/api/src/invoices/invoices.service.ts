@@ -1,13 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type { BlockchainAdapter } from '@cryptopay/blockchain';
+import { Injectable } from '@nestjs/common';
 import { InvoiceStatus, type Invoice } from '@cryptopay/database';
 import { assertInvoiceTransition } from '@cryptopay/payments';
 import { ConflictError, NotFoundError, generateId } from '@cryptopay/shared';
 import type { CreateInvoiceInput } from '@cryptopay/validation';
 import { AuditService } from '../audit/audit.service.js';
-import { BLOCKCHAIN_ADAPTER } from '../blockchain/blockchain-adapter.token.js';
 import type { RequestContext } from '../common/request-context.util.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { WalletAddressesService } from '../wallet-addresses/wallet-addresses.service.js';
 
 // Phase 1 has no product-configurable expiry yet — a fixed window is enough
 // to demonstrate the complete flow (spec §93 Phase 1 goal).
@@ -18,7 +17,7 @@ export class InvoicesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    @Inject(BLOCKCHAIN_ADAPTER) private readonly blockchain: BlockchainAdapter,
+    private readonly walletAddresses: WalletAddressesService,
   ) {}
 
   async create(
@@ -40,6 +39,10 @@ export class InvoicesService {
     // payable (has an address, an expiry) the moment it exists (spec §16).
     assertInvoiceTransition(InvoiceStatus.CREATED, InvoiceStatus.PENDING);
 
+    // Throws ValidationError if the org hasn't set a deposit address for
+    // this network/token yet (evm mode) — fake mode auto-provisions one.
+    const paymentAddress = await this.walletAddresses.getDepositAddress(organizationId, input.network, input.token);
+
     const invoice = await this.prisma.invoice.create({
       data: {
         id: generateId('inv'),
@@ -49,7 +52,7 @@ export class InvoicesService {
         currency: input.currency,
         token: input.token,
         network: input.network,
-        paymentAddress: this.blockchain.generateDepositAddress(),
+        paymentAddress,
         expiresAt: new Date(Date.now() + INVOICE_EXPIRY_MS),
         ...(input.externalId !== undefined ? { externalId: input.externalId } : {}),
         ...(input.description !== undefined ? { description: input.description } : {}),

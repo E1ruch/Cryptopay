@@ -10,6 +10,7 @@ import { ApiKeysModule } from './api-keys/api-keys.module.js';
 import { InvoicesModule } from './invoices/invoices.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { WebhooksModule } from './webhooks/webhooks.module.js';
+import { WalletAddressesModule } from './wallet-addresses/wallet-addresses.module.js';
 import { CheckoutModule } from './checkout/checkout.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { HealthController } from './health/health.controller.js';
@@ -27,6 +28,7 @@ import { AppExceptionFilter } from './common/errors/app-exception.filter.js';
     InvoicesModule,
     PaymentsModule,
     WebhooksModule,
+    WalletAddressesModule,
     CheckoutModule,
     DashboardModule,
   ],

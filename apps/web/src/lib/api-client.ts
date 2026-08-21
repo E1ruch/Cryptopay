@@ -32,7 +32,7 @@ function readCookie(name: string): string | undefined {
 }
 
 export interface ApiFetchOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
   organizationId?: string;
 }

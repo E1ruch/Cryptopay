@@ -1,19 +1,29 @@
 # Redesign plan: Telegram Web App Crypto Wallet aesthetic
 
-**Status:** not started. This is a handoff brief for a new chat/session to
-pick up — read this fully before touching code.
+**Status:** the core palette/tokens and primitives landed — `globals.css`'s
+`@theme` block already has the Telegram-blue palette (`--color-brand-*`,
+`--color-ink-*`), `rounded-control`/`rounded-card` radii, and the
+`fade-up`/`slide-up`/`scale-in` motion tokens this plan calls for, and
+`Button`/`Card`/`Input`/`Label`/`ListRow`/`StatCard` were rebuilt against
+them. Login, register, the dashboard shell (responsive sidebar + mobile
+bottom nav), the dashboard overview, and — going beyond this plan's
+original scope — the Phase 1 checkout page and the rest of the merchant
+dashboard (invoices/API keys/webhooks) were all built using this same
+system. **Check current component state before assuming anything below is
+still accurate** — this file may lag active edits to `apps/web`.
 
 ## Context
 
 Phase 0 of CryptoPay is complete and verified: monorepo, auth, organizations,
-API keys, Docker Compose, CI — see [`README.md`](../../README.md) and
-[`docs/architecture/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) for
-what exists. `apps/web` currently has a **minimal Stripe/Apple-like** look
-(per `CryptoPay_Master_Spec.md` §7): white background, indigo accent, plain
-cards, system font stack. Hand-rolled Tailwind v4 UI primitives live in
-`apps/web/src/components/ui/` (`Button`, `Input`, `Label`, `Card`) — there is
-no shadcn/ui CLI install, just plain Tailwind-styled components matching
-shadcn's API shape.
+API keys, Docker Compose, CI. Phase 1 (invoices, payments, webhooks,
+checkout, dashboard) is also complete — see [`README.md`](../../README.md)
+and [`docs/architecture/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md)
+for what exists now. `apps/web` originally had a **minimal Stripe/Apple-like**
+look (per `CryptoPay_Master_Spec.md` §7): white background, indigo accent,
+plain cards, system font stack — the redesign below moved it toward
+Telegram's palette instead. Hand-rolled Tailwind v4 UI primitives live in
+`apps/web/src/components/ui/` — there is no shadcn/ui CLI install, just
+plain Tailwind-styled components matching shadcn's API shape.
 
 The user wants the visual language moved toward **"Telegram Web App Crypto
 Wallet"** — they specifically like that aesthetic and want to get close to
@@ -90,10 +100,11 @@ don't apply here. Concretely, what transfers well:
 - Auth/validation logic, i18n message keys (reuse existing
   `messages/en.json` / `messages/ru.json` keys; add new ones only if new UI
   text is genuinely needed, keeping both locales in sync).
-- The Phase 1 checkout page doesn't exist yet — don't build it as part of
-  this pass unless the user explicitly asks; if they do, it's the screen
-  where a wallet aesthetic matters most (spec §19/§90), so treat it as a
-  natural extension of the same design system once built here.
+- ~~The Phase 1 checkout page doesn't exist yet~~ — it's since been built
+  (`apps/web/src/app/pay/[id]`, `components/checkout-card.tsx`) as a
+  natural extension of this same design system, per the original note
+  below. Restyling it further is in scope for a design pass; it just isn't
+  a gap anymore.
 
 ## Suggested execution order
 

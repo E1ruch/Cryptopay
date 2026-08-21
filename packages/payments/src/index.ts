@@ -3,6 +3,8 @@ export { canTransitionPayment, assertPaymentTransition } from './payment-state-m
 export { evaluatePaymentAmount, type PaymentAmountMatch } from './payment-amount.js';
 export {
   matchesInvoice,
+  selectMatchingInvoice,
   type InvoicePaymentTarget,
   type DetectedTransfer,
+  type PendingInvoiceCandidate,
 } from './payment-matching.js';

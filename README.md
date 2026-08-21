@@ -4,15 +4,15 @@ Non-custodial crypto payment infrastructure for online businesses — Stripe-lik
 checkout for stablecoins. See [`CryptoPay_Master_Spec.md`](CryptoPay_Master_Spec.md)
 for the full product/engineering spec this project is built against.
 
-**Status: Phase 1 complete — fake payments.** Auth, organizations, API keys,
-the full Invoice/Payment domain, a fake blockchain adapter, webhook
-delivery, the public checkout page, and the merchant dashboard are all
-implemented and tested. There is still no *real* blockchain integration —
-everything above runs against `FakeBlockchainAdapter`, a deterministic
-in-memory stand-in. Phase 2 (real EVM adapter on testnet) is next — see
-[Roadmap](#roadmap) below, and
+**Status: Phase 2 complete — real testnet payments.** Auth, organizations,
+API keys, the full Invoice/Payment domain, webhook delivery, the public
+checkout page, and the merchant dashboard are all implemented and tested.
+A real EVM adapter (Base Sepolia, via `viem`) now runs alongside Phase 1's
+`FakeBlockchainAdapter` — pick which with `BLOCKCHAIN_MODE=fake` (default,
+zero setup) or `BLOCKCHAIN_MODE=evm` (real testnet USDC, see
+[Roadmap](#roadmap) below). See
 [`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) for
-exactly where that adapter plugs in.
+how the two modes fit together.
 
 ## Stack
 
@@ -31,7 +31,8 @@ apps/
   web/      Next.js dashboard + public checkout page (/pay/:id)
   api/      NestJS API — auth, organizations, API keys, invoices, payments,
             webhooks, checkout, dashboard reads
-  worker/   BullMQ background jobs — health-check, webhook dispatch/retry
+  worker/   BullMQ background jobs — health-check, webhook dispatch/retry,
+            blockchain scan + payment confirm (BLOCKCHAIN_MODE=evm only)
 packages/
   database/   Prisma schema + client
   config/     Env validation (Zod)
@@ -41,8 +42,9 @@ packages/
   logger/     Structured logging with secret redaction
   payments/   Invoice/Payment state machines, amount/matching rules — pure
               domain logic, no I/O (spec §87-88)
-  blockchain/ BlockchainAdapter interface + FakeBlockchainAdapter (Phase 1) —
-              the seam Phase 2's real EVM adapter plugs into
+  blockchain/ BlockchainAdapter interface, FakeBlockchainAdapter (Phase 1),
+              EvmBlockchainAdapter (Phase 2 — Base Sepolia via viem), and
+              the per-network adapter registry
   webhooks/   HMAC signing, SSRF-safe URL validation, retry schedule,
               delivery — no BullMQ/Prisma, just the mechanics
 infrastructure/
@@ -66,10 +68,12 @@ cp .env.example .env
 docker compose up --build
 ```
 
-`.env.example` also documents `REQUIRED_CONFIRMATIONS`,
-`BLOCKCHAIN_BLOCK_TIME_MS` (Phase 1's fake chain — irrelevant once Phase 2's
-real adapter replaces it) and `RATE_LIMIT_CHECKOUT_PER_MINUTE` — all have
-working defaults, no action needed for local dev.
+`.env.example` also documents `BLOCKCHAIN_MODE` (`fake` by default —
+zero-setup, in-memory chain; set to `evm` for real Base Sepolia testnet
+payments), `REQUIRED_CONFIRMATIONS`, `BLOCKCHAIN_BLOCK_TIME_MS` (fake mode
+only), `BASE_SEPOLIA_RPC_URL` (evm mode only — defaults to the public
+`sepolia.base.org` endpoint), and `RATE_LIMIT_CHECKOUT_PER_MINUTE` — all
+have working defaults, no action needed for local dev in fake mode.
 
 Visit `http://localhost` — nginx routes `/` to the web app and `/v1` to the API
 on the same origin (no CORS needed in this setup).
@@ -89,7 +93,7 @@ The API listens on `API_PORT` (default `3010`), web on `3000`. Set
 `apps/web/.env.local` from `.env.local.example` so the browser knows where
 the API is.
 
-### First test payment flow (spec §91: under 10 minutes, no real blockchain)
+### First test payment flow (spec §91: under 10 minutes, `BLOCKCHAIN_MODE=fake`)
 
 1. `POST /v1/auth/register` with `{ email, password }`.
 2. In dev mode there's no email provider yet — the verification token is
@@ -97,7 +101,10 @@ the API is.
 3. `POST /v1/auth/verify-email` with that token.
 4. `POST /v1/auth/login` — sets session cookies.
 5. Open the dashboard (`/dashboard`), create an organization, then go to
-   **API Keys** and create one (needs at least `invoices:write`).
+   **API Keys** and create one (needs at least `invoices:write`). (In fake
+   mode you can skip straight to step 6 — a deposit address is
+   auto-provisioned; in evm mode, set one first under **Settings → Wallet
+   address**, see below.)
 6. Create an invoice with that key:
    ```bash
    curl -X POST http://localhost:3010/v1/invoices \
@@ -105,12 +112,31 @@ the API is.
      -d '{"amount":"49.00","currency":"USD","token":"USDC","network":"base"}'
    ```
    The response's `checkout_url` is a real page — open it in a browser.
-7. Click **Simulate payment** on the checkout page (Phase 1 has no real
-   wallet — this stands in for a customer's transfer, spec §58). The page
-   polls automatically and moves through detecting → confirming → paid.
+7. Click **Simulate payment** on the checkout page (fake mode has no real
+   wallet — this stands in for a customer's transfer, spec §58; disabled in
+   evm mode). The page polls automatically and moves through detecting →
+   confirming → paid.
 8. Check **Dashboard → Invoices** for the same invoice now showing `PAID`,
    and **Dashboard → Webhooks** (after registering an endpoint there) for
    the delivered `payment.paid` event.
+
+### Real testnet payment flow (`BLOCKCHAIN_MODE=evm`)
+
+Set `BLOCKCHAIN_MODE=evm` (and optionally a paid `BASE_SEPOLIA_RPC_URL`) and
+run `apps/worker` alongside `apps/api` — the blockchain-scan/payment-confirm
+queues only start in this mode. Then:
+
+1. Steps 1–5 above, same as fake mode.
+2. In the dashboard, go to **Settings → Wallet address** and enter a Base
+   address you control (public address only — CryptoPay never asks for or
+   stores a key). Invoice creation fails with a clear error until this is set.
+3. Create an invoice (same `curl` as above) and open its `checkout_url`.
+4. Send real Base Sepolia testnet USDC from a funded wallet to the address
+   shown on the checkout page.
+5. `apps/worker` detects the transfer, tracks confirmations
+   (`REQUIRED_CONFIRMATIONS`, default 3), and finalizes the invoice —
+   watch it move `DETECTED → CONFIRMING → PAID` on **Dashboard → Invoices**,
+   same as the simulated flow, just driven by a real chain this time.
 
 ## Development
 
@@ -127,37 +153,45 @@ Each package/app also exposes these as its own `pnpm run <script>`.
 See `CryptoPay_Master_Spec.md` §93 for the full phase breakdown. Short version:
 
 - **Phase 0** — monorepo, auth, organizations, API keys, CI, Docker. Done.
-- **Phase 1 (this)** — done:
+- **Phase 1** — done:
   - Invoice/Payment domain + explicit state machines (`packages/payments`)
   - `FakeBlockchainAdapter` (`packages/blockchain`) behind a `BlockchainAdapter`
-    interface Phase 2 implements for real
-  - Payment detection/confirmation pipeline (`apps/api/src/payments`) —
-    currently an in-process poller, **not yet** on `apps/worker`'s
-    already-scaffolded `blockchainScan`/`paymentConfirm` queues; see
-    ARCHITECTURE.md for why and what Phase 2 needs to change
+    interface
   - Webhook engine: HMAC signing, SSRF-safe delivery, retry schedule
     (`packages/webhooks`, `apps/worker`'s `webhookDispatch`/`webhookRetry`)
   - Public checkout page (`apps/web/src/app/pay/[id]`)
   - Merchant dashboard: invoices, API keys, webhook endpoints + delivery
     status (`apps/web/src/app/[locale]/dashboard`)
-  - Two known gaps, intentionally deferred rather than silently skipped:
-    late payments detected after invoice expiry aren't flagged (spec §46)
-    and there's no generic `Idempotency-Key` header handler yet (spec §52,
-    Invoice creation has its own narrower `external_id` dedup in the
-    meantime) — see `docs/security/THREAT_MODEL.md`'s "Deferred" section.
-- **Phase 2 (next)** — real EVM adapter on testnet (Base), block scanner,
-  confirmations. Concretely: implement `BlockchainAdapter` for a real chain,
-  swap `BlockchainModule`'s provider, and move the payment pipeline off its
-  Phase-1 in-process poller onto `apps/worker`'s real queues — see
-  ARCHITECTURE.md's "Blockchain adapter abstraction" section before touching
-  any of this.
-- **Phase 3** — production hardening (RPC failover, monitoring, backups).
+- **Phase 2 (this)** — done:
+  - `EvmBlockchainAdapter` (`packages/blockchain`, via `viem`) for Base
+    Sepolia testnet, behind the same `BlockchainAdapter` interface, selected
+    per-network by a small adapter registry (`BLOCKCHAIN_MODE=fake|evm`)
+  - Merchant-supplied deposit addresses (`MerchantWalletAddress`, dashboard
+    **Settings → Wallet address**) replacing Phase 1's generated-per-invoice
+    address — spec §42 forbids the platform holding a key for that; see
+    `docs/security/THREAT_MODEL.md`'s "Explicitly not attempted" section
+  - Payment detection/confirmation moved onto `apps/worker`'s
+    `blockchainScan`/`paymentConfirm` queues in `evm` mode (still an
+    in-process `apps/api` poller in `fake` mode — see ARCHITECTURE.md for why
+    both exist)
+  - Reorg handling (spec §25): a confirming payment whose transaction
+    disappears moves to `REORG_DETECTED` and gets a grace window to
+    reappear before failing, rather than assuming finality too early
+  - Known gaps carried forward unchanged from Phase 1 (not addressed by
+    this pass): late payments after invoice expiry aren't flagged (spec
+    §46), no generic `Idempotency-Key` header handler (spec §52), and
+    two invoices pending on the same shared address for the exact same
+    amount at once aren't disambiguated — see
+    `docs/security/THREAT_MODEL.md`'s "Deferred" section.
+- **Phase 3 (next)** — production hardening: RPC failover/provider manager
+  (spec §38 — Phase 2 talks to a single public RPC endpoint with no
+  fallback), monitoring, backups, rate limiting beyond IP/email.
 - **Phase 4+** — pilot, then scale (more chains, payment links, SDKs).
 
 ## Docs
 
 - [`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) —
-  **read this first if you're starting Phase 2**
+  **read this first if you're starting Phase 3**
 - [`docs/architecture/DATABASE.md`](docs/architecture/DATABASE.md)
 - [`docs/security/SECURITY.md`](docs/security/SECURITY.md)
 - [`docs/security/THREAT_MODEL.md`](docs/security/THREAT_MODEL.md)

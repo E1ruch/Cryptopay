@@ -1,8 +1,9 @@
 # Security
 
-This describes what's actually implemented in Phase 0, not an aspirational
-policy. See [`THREAT_MODEL.md`](THREAT_MODEL.md) for the threat-by-threat
-breakdown and [`SECRETS.md`](SECRETS.md) for secret handling.
+This describes what's actually implemented through Phase 1, not an
+aspirational policy. See [`THREAT_MODEL.md`](THREAT_MODEL.md) for the
+threat-by-threat breakdown and [`SECRETS.md`](SECRETS.md) for secret
+handling.
 
 ## Reporting a vulnerability
 
@@ -59,8 +60,10 @@ API (Bearer token, no cookies) doesn't need this.
 ## Rate limiting
 
 Redis-backed, per spec §30: login attempts are limited per IP+email
-(`RATE_LIMIT_LOGIN_PER_MINUTE`, default 5/min), everything else per IP
-(`RATE_LIMIT_GLOBAL_PER_MINUTE`, default 300/min). Both configurable via env.
+(`RATE_LIMIT_LOGIN_PER_MINUTE`, default 5/min), the public checkout page per
+IP (`RATE_LIMIT_CHECKOUT_PER_MINUTE`, default 100/min — it has no other
+identity to key off of), everything else per IP
+(`RATE_LIMIT_GLOBAL_PER_MINUTE`, default 300/min). All configurable via env.
 
 ## API keys
 
@@ -68,16 +71,69 @@ Redis-backed, per spec §30: login attempts are limited per IP+email
 only as `HMAC-SHA256(API_KEY_PEPPER, raw)`. Test and live keys are
 prefix-distinguishable and never interchangeable (spec §15). Scoped
 (`invoices:read`, `invoices:write`, ... — spec §75); default creation
-requires at least one explicit scope, never an implicit "all scopes."
+requires at least one explicit scope, never an implicit "all scopes," and
+`ScopesGuard` (Phase 1) actually enforces the granted scopes against each
+route's `@RequireScopes(...)` — scopes were defined in Phase 0 but nothing
+checked them until Phase 1's merchant API needed real endpoints to protect.
+
+## Public checkout page
+
+`GET/POST /v1/checkout/:id` (spec §19) intentionally takes no session and
+no API key — the invoice's own opaque public id is the access boundary, and
+the response (`CheckoutView`) is a narrower projection than the
+authenticated `InvoiceView`: no `organizationId`, `externalId`, or
+`metadata` ever crosses into it (spec §48). Protected instead by a
+dedicated per-IP rate limit (see above). The customer never sees a
+different invoice's data because ids are opaque, high-entropy, and looked
+up directly — there's no enumerable sequence to walk.
+
+## Webhook delivery (SSRF, signing, replay)
+
+Merchant-registered webhook URLs are untrusted, attacker-influenceable
+destinations (spec §29) — `assertSafeWebhookUrl` (`packages/webhooks`)
+rejects anything non-HTTPS and resolves the hostname, rejecting any address
+in a loopback/RFC1918/link-local/cloud-metadata range (including
+`169.254.169.254`, the common cloud-metadata SSRF target). This check runs
+**twice**: once when the merchant registers/edits the URL, and again
+immediately before every delivery attempt, since DNS is attacker-controlled
+and can rebind between the two (a TOCTOU otherwise). Delivery never follows
+redirects (`redirect: 'manual'` — a 3xx could repoint at an internal
+address) and is timeout-bounded.
+
+Every delivery is HMAC-SHA256 signed over `${timestamp}.${body}` with a
+per-endpoint secret (`X-CryptoPay-Signature`/`-Timestamp`/`-Event-ID`
+headers, spec §27/§61). The reference `verifyWebhookSignature` merchants
+would use also rejects a stale timestamp outside a tolerance window,
+giving replay protection to any merchant who checks it. The signing secret
+itself is AES-256-GCM encrypted at rest (`ENCRYPTION_KEY`), never plaintext
+or hashed — delivery needs it back to compute each signature.
+
+## Payment integrity
+
+The server-side detection pipeline is the *only* thing that can move an
+Invoice/Payment to a paid-adjacent state (spec §22: never trust a customer
+or frontend claim of "I paid"). `packages/payments`' explicit state
+machines (`assertInvoiceTransition`/`assertPaymentTransition`, spec §87-88)
+throw `InvalidStateTransitionError` on any transition outside the declared
+map — there is no code path that writes an invoice `status` column without
+going through one of these checks first. Amount comparison uses
+`Prisma.Decimal` throughout, never a JS float (spec §18) — an invoice is
+only ever `PAID` on an *exact* match; under/over is flagged, never
+silently rounded or accepted (spec §44/§45).
 
 ## Transport & headers
 
-`@fastify/helmet` sets standard security headers (CSP `default-src 'none'`
-as a baseline — Phase 1's checkout page will need a scoped policy once it
-renders real content). `@fastify/cors` restricts origins to `CORS_ORIGINS`
-with `credentials: true`. In the bundled Docker Compose setup, nginx puts
-web and api on one origin, so the browser never needs cross-origin requests
-at all.
+`@fastify/helmet` sets standard security headers on **API** responses only
+(CSP `default-src 'none'` as a baseline — appropriate there, since the API
+never serves renderable HTML). `apps/web` — including the public checkout
+page, which is the one page here an attacker-adjacent audience actually
+loads — has **no CSP configured of its own yet**; the API's helmet policy
+doesn't apply to it at all, since Next.js serves those responses
+independently. Worth a real look before checkout handles anything more
+sensitive than it does today. `@fastify/cors` restricts origins to
+`CORS_ORIGINS` with `credentials: true`. In the bundled Docker Compose
+setup, nginx puts web and api on one origin, so the browser never needs
+cross-origin requests at all.
 
 `COOKIE_SECURE` controls the cookies' `Secure` attribute and is deliberately
 **not** derived from `NODE_ENV` — a `NODE_ENV=production` build can still run
@@ -103,9 +159,20 @@ security hardening pass defines an acceptable-risk policy — flagging every
 transitive dev-dependency advisory as a hard CI failure this early would be
 more noise than signal.
 
-## What's explicitly out of scope for Phase 0
+## What's explicitly out of scope through Phase 2
 
-No custody, no private keys, no blockchain verification yet (nothing to
-secure there until Phase 2). No admin panel yet (spec §32/§76 roles are
-defined in `packages/shared` but not wired to any endpoint). No SAST/DAST
-tooling yet — Phase 4 per the roadmap.
+Still no custody, no private keys anywhere in the codebase (spec §42) —
+Phase 2's real `EvmBlockchainAdapter` only ever reads chain state via a
+public RPC, and deposit addresses are merchant-supplied
+(`MerchantWalletAddress`), never generated or held by the platform; see
+`docs/security/THREAT_MODEL.md`'s "Explicitly not attempted" section.
+What Phase 2 *did* bring into scope — reorg handling and wrong-token
+spoofing — is implemented (`REORG_DETECTED` state, canonical
+contract-address token identity); what's still deferred is **RPC provider
+trust**: a single public `BASE_SEPOLIA_RPC_URL` endpoint with no failover
+or cross-checking (spec §38's "RPC Provider Manager" is Phase 3).
+No admin panel yet (spec §32/§76 roles are defined in `packages/shared`
+but not wired to any endpoint). No SAST/DAST tooling yet — Phase 4 per the
+roadmap. No CSP for `apps/web` (see "Transport & headers" above). No
+generic `Idempotency-Key` request-header handling (spec §52) — only
+`Invoice.external_id`'s narrower dedup exists; see `THREAT_MODEL.md`.

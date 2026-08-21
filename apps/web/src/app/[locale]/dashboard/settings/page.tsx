@@ -10,6 +10,7 @@ import {
   useUpdateOrganization,
   type MembershipView,
 } from '@/hooks/use-organization';
+import { useSetWalletAddress, useWalletAddresses } from '@/hooks/use-wallet-addresses';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge, type BadgeTone } from '@/components/ui/badge';
@@ -28,9 +29,76 @@ export default function SettingsPage() {
       <h1 className="mb-6 animate-fade-up text-2xl font-semibold tracking-tight text-ink-900">{t('title')}</h1>
       <div className="max-w-lg space-y-4">
         <OrganizationSection />
+        <WalletAddressSection />
         <MembersSection />
       </div>
     </div>
+  );
+}
+
+// Phase 2 scope is Base Sepolia/USDC only (spec §93) — the merchant sets
+// their own receiving address here (spec §42: the platform never generates
+// or holds a key for this). InvoicesService reads it when creating an
+// invoice; leaving it unset fails invoice creation in BLOCKCHAIN_MODE=evm.
+const WALLET_NETWORK = 'base';
+const WALLET_TOKEN = 'USDC';
+
+function WalletAddressSection() {
+  const t = useTranslations('dashboard.settings');
+  const { data: wallets, isLoading } = useWalletAddresses();
+  const setWalletAddress = useSetWalletAddress();
+  const { toast } = useToast();
+  const [address, setAddress] = useState('');
+
+  const configured = wallets?.find((w) => w.network === WALLET_NETWORK && w.token === WALLET_TOKEN);
+
+  useEffect(() => {
+    if (configured) setAddress(configured.address);
+  }, [configured]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await setWalletAddress.mutateAsync(
+      { network: WALLET_NETWORK, token: WALLET_TOKEN, address: address.trim() },
+      {
+        onSuccess: () => toast(t('walletSaved'), 'success'),
+        onError: (err) => toast(err instanceof ApiError ? err.message : t('walletSaved'), 'danger'),
+      },
+    );
+  }
+
+  if (isLoading) {
+    return <Skeleton className="h-40 animate-fade-up [animation-delay:30ms]" />;
+  }
+
+  const dirty = address.trim() !== (configured?.address ?? '') && address.trim().length > 0;
+
+  return (
+    <Card className="animate-fade-up [animation-delay:30ms]">
+      <h2 className="mb-1 text-base font-semibold text-ink-900">{t('walletTitle')}</h2>
+      <p className="mb-4 text-sm text-ink-500">{t('walletSubtitle')}</p>
+      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
+        <div>
+          <Label htmlFor="settings-wallet-address">{t('walletAddress')}</Label>
+          <Input
+            id="settings-wallet-address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="0x..."
+            className="font-mono"
+            required
+          />
+        </div>
+        {setWalletAddress.error && (
+          <p role="alert" className="rounded-control bg-danger-50 px-3.5 py-2.5 text-sm text-danger-600">
+            {setWalletAddress.error instanceof ApiError ? setWalletAddress.error.message : t('walletSaved')}
+          </p>
+        )}
+        <Button type="submit" size="sm" disabled={!dirty || setWalletAddress.isPending}>
+          {setWalletAddress.isPending ? t('saving') : t('save')}
+        </Button>
+      </form>
+    </Card>
   );
 }
 

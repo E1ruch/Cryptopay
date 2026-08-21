@@ -1,8 +1,20 @@
+import type { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
+import { createBlockchainAdapterRegistry } from '@cryptopay/blockchain';
 import { loadEnv } from '@cryptopay/config';
 import { createLogger } from '@cryptopay/logger';
 import { createPrismaClient, type PrismaClient } from '@cryptopay/database';
+import {
+  createBlockchainScanQueue,
+  createBlockchainScanWorker,
+  scheduleBlockchainScan,
+} from './queues/blockchain-scan.queue.js';
 import { createHealthCheckQueue, createHealthCheckWorker, scheduleHealthCheck } from './queues/health-check.queue.js';
+import {
+  createPaymentConfirmQueue,
+  createPaymentConfirmWorker,
+  schedulePaymentConfirm,
+} from './queues/payment-confirm.queue.js';
 import {
   createWebhookDispatchQueue,
   createWebhookDispatchWorker,
@@ -51,7 +63,50 @@ async function bootstrap(): Promise<void> {
     logger.error({ jobId: job?.id, err: error }, 'webhook retry job failed');
   });
 
-  logger.info('Worker started — queues ready: health-check, webhook-dispatch, webhook-retry');
+  // BLOCKCHAIN_MODE=fake (default) keeps payment detection/confirmation on
+  // apps/api's in-process poller (FakeBlockchainAdapter's state is
+  // process-local — see payments.service.ts's class doc comment), so these
+  // two queues stay off entirely rather than scanning a chain nothing else
+  // can see. BLOCKCHAIN_MODE=evm (Phase 2) is what activates them.
+  let blockchainScanWorker: Worker | undefined;
+  let blockchainScanQueue: Queue | undefined;
+  let paymentConfirmWorker: Worker | undefined;
+  let paymentConfirmQueue: Queue | undefined;
+
+  if (env.BLOCKCHAIN_MODE === 'evm') {
+    const registry = createBlockchainAdapterRegistry({
+      mode: env.BLOCKCHAIN_MODE,
+      blockTimeMs: env.BLOCKCHAIN_BLOCK_TIME_MS,
+      baseSepoliaRpcUrl: env.BASE_SEPOLIA_RPC_URL,
+    });
+    const network = 'base';
+    const adapter = registry.get(network);
+    if (!adapter) throw new Error(`No blockchain adapter registered for network "${network}"`);
+
+    blockchainScanQueue = createBlockchainScanQueue(connection);
+    await scheduleBlockchainScan(blockchainScanQueue);
+    blockchainScanWorker = createBlockchainScanWorker(connection, prisma, adapter, network, logger);
+    blockchainScanWorker.on('failed', (job, error) => {
+      logger.error({ jobId: job?.id, err: error }, 'blockchain scan job failed');
+    });
+
+    paymentConfirmQueue = createPaymentConfirmQueue(connection);
+    await schedulePaymentConfirm(paymentConfirmQueue);
+    paymentConfirmWorker = createPaymentConfirmWorker(
+      connection,
+      prisma,
+      adapter,
+      env.REQUIRED_CONFIRMATIONS,
+      logger,
+    );
+    paymentConfirmWorker.on('failed', (job, error) => {
+      logger.error({ jobId: job?.id, err: error }, 'payment confirm job failed');
+    });
+  }
+
+  const activeQueues = ['health-check', 'webhook-dispatch', 'webhook-retry'];
+  if (env.BLOCKCHAIN_MODE === 'evm') activeQueues.push('blockchain-scan', 'payment-confirm');
+  logger.info(`Worker started — queues ready: ${activeQueues.join(', ')}`);
 
   let shuttingDown = false;
   const shutdown = async (signal: string): Promise<void> => {
@@ -64,6 +119,10 @@ async function bootstrap(): Promise<void> {
     await webhookDispatchQueue.close();
     await webhookRetryWorker.close();
     await webhookRetryQueue.close();
+    if (blockchainScanWorker) await blockchainScanWorker.close();
+    if (blockchainScanQueue) await blockchainScanQueue.close();
+    if (paymentConfirmWorker) await paymentConfirmWorker.close();
+    if (paymentConfirmQueue) await paymentConfirmQueue.close();
     await prisma.$disconnect();
     connection.disconnect();
     process.exit(0);

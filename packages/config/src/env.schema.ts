@@ -72,8 +72,18 @@ export const envSchema = z.object({
   // detect-then-confirm pipeline carries over unchanged into Phase 2.
   REQUIRED_CONFIRMATIONS: z.coerce.number().int().positive().default(3),
   // How often FakeBlockchainAdapter "mines" a block, in ms (spec §93 Phase
-  // 1: fake blockchain). Irrelevant once a real adapter replaces it.
+  // 1: fake blockchain). Only meaningful in BLOCKCHAIN_MODE=fake.
   BLOCKCHAIN_BLOCK_TIME_MS: z.coerce.number().int().positive().default(2000),
+  // 'fake' (default) keeps every existing Phase 0/1 flow — in-memory chain,
+  // in-process apps/api poller, zero external calls. 'evm' switches the
+  // `base` network to a real Base Sepolia RPC adapter and moves payment
+  // detection/confirmation onto apps/worker's blockchainScan/paymentConfirm
+  // queues (spec §93 Phase 2) — see docs/architecture/ARCHITECTURE.md.
+  BLOCKCHAIN_MODE: z.enum(['fake', 'evm']).default('fake'),
+  // Public Base Sepolia endpoint by default — swap in a paid provider
+  // (Alchemy/Infura/QuickNode) here later without any code change. RPC
+  // failover across multiple providers is Phase 3 scope (spec §38), not this.
+  BASE_SEPOLIA_RPC_URL: z.string().url().default('https://sepolia.base.org'),
 });
 
 export type Env = z.infer<typeof envSchema>;

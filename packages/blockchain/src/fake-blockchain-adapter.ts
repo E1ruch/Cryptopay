@@ -3,7 +3,13 @@ import type { Prisma } from '@cryptopay/database';
 import { NotFoundError } from '@cryptopay/shared';
 import type { BlockchainAdapter, BlockchainTransaction, TokenTransfer } from './blockchain-adapter.js';
 
+/** Not part of {@link BlockchainAdapter} — a real adapter never generates addresses (spec §42). Dev/test use only. */
+export function generateFakeAddress(): string {
+  return `0x${randomBytes(20).toString('hex')}`;
+}
+
 export interface SimulatePaymentInput {
+  network: string;
   token: string;
   toAddress: string;
   amount: Prisma.Decimal;
@@ -38,10 +44,6 @@ export class FakeBlockchainAdapter implements BlockchainAdapter {
     this.genesisTimestamp = this.now();
   }
 
-  generateDepositAddress(): string {
-    return `0x${randomBytes(20).toString('hex')}`;
-  }
-
   validateAddress(address: string): boolean {
     return /^0x[0-9a-fA-F]{40}$/.test(address);
   }
@@ -64,8 +66,12 @@ export class FakeBlockchainAdapter implements BlockchainAdapter {
     });
   }
 
-  getTokenTransfers(blockNumber: number): Promise<TokenTransfer[]> {
-    return Promise.resolve(this.transfersByBlock.get(blockNumber) ?? []);
+  getTokenTransfers(fromBlock: number, toBlock: number): Promise<TokenTransfer[]> {
+    const transfers: TokenTransfer[] = [];
+    for (let block = fromBlock; block <= toBlock; block++) {
+      transfers.push(...(this.transfersByBlock.get(block) ?? []));
+    }
+    return Promise.resolve(transfers);
   }
 
   getConfirmations(txHash: string): Promise<number> {
@@ -84,8 +90,9 @@ export class FakeBlockchainAdapter implements BlockchainAdapter {
   simulatePayment(input: SimulatePaymentInput): TokenTransfer {
     const transfer: TokenTransfer = {
       txHash: `0xfake${randomBytes(28).toString('hex')}`,
+      network: input.network,
       token: input.token,
-      fromAddress: input.fromAddress ?? this.generateDepositAddress(),
+      fromAddress: input.fromAddress ?? generateFakeAddress(),
       toAddress: input.toAddress,
       amount: input.amount,
       blockNumber: this.currentBlock(),
