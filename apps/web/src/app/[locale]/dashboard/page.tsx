@@ -9,7 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BuildingIcon } from '@/components/ui/icons';
+import { Icon } from '@/components/ui/icon';
+import { icons } from '@/components/ui/icons';
 import { ApiError } from '@/lib/api-client';
 
 export default function DashboardOverviewPage() {
@@ -52,7 +53,7 @@ function CreateOrganizationCard() {
     <Card className="max-w-md animate-fade-up [animation-delay:80ms]">
       <div className="mb-5 flex items-center gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.85rem] bg-brand-50 text-brand-600">
-          <BuildingIcon className="h-5 w-5" />
+          <Icon icon={icons.building} className="h-5 w-5" />
         </span>
         <div>
           <h2 className="text-base font-semibold text-ink-900">{t('createTitle')}</h2>

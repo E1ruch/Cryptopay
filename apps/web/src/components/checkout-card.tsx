@@ -7,7 +7,8 @@ import { formatCountdown, useCountdown } from '@/hooks/use-countdown';
 import { simulateCheckoutPayment, CheckoutApiError, type CheckoutView } from '@/lib/checkout-client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { AlertTriangleIcon, CheckCircleIcon, ClockIcon, CopyIcon, XCircleIcon } from '@/components/ui/icons';
+import { Icon } from '@/components/ui/icon';
+import { icons } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 
 export function CheckoutCard({ invoiceId }: { invoiceId: string }) {
@@ -20,7 +21,7 @@ export function CheckoutCard({ invoiceId }: { invoiceId: string }) {
   if (error instanceof CheckoutApiError && error.status === 404) {
     return (
       <ClosedState
-        icon={<XCircleIcon className="h-7 w-7" />}
+        icon={<Icon icon={icons.xCircle} className="h-7 w-7" />}
         title="Invoice not found"
         body="This payment link doesn't exist or may have been removed."
       />
@@ -30,7 +31,7 @@ export function CheckoutCard({ invoiceId }: { invoiceId: string }) {
   if (error || !data) {
     return (
       <ClosedState
-        icon={<XCircleIcon className="h-7 w-7" />}
+        icon={<Icon icon={icons.xCircle} className="h-7 w-7" />}
         title="Something went wrong"
         body="Couldn't load this payment. Please refresh the page."
       />
@@ -44,7 +45,7 @@ export function CheckoutCard({ invoiceId }: { invoiceId: string }) {
     case 'CONFIRMING':
       return (
         <ClosedState
-          icon={<ClockIcon className="h-7 w-7 animate-pulse" />}
+          icon={<Icon icon={icons.clock} className="h-7 w-7 animate-pulse" />}
           title="Confirming your payment"
           body="We've detected your transfer and are waiting for it to confirm. This page updates automatically."
           tone="brand"
@@ -55,7 +56,7 @@ export function CheckoutCard({ invoiceId }: { invoiceId: string }) {
     case 'UNDERPAID':
       return (
         <ClosedState
-          icon={<AlertTriangleIcon className="h-7 w-7" />}
+          icon={<Icon icon={icons.alertTriangle} className="h-7 w-7" />}
           title="Underpayment received"
           body={`We received less than the ${data.amount} ${data.token} expected. Please contact ${data.merchantName} to resolve this.`}
           tone="warning"
@@ -64,7 +65,7 @@ export function CheckoutCard({ invoiceId }: { invoiceId: string }) {
     case 'OVERPAID':
       return (
         <ClosedState
-          icon={<AlertTriangleIcon className="h-7 w-7" />}
+          icon={<Icon icon={icons.alertTriangle} className="h-7 w-7" />}
           title="Overpayment received"
           body={`We received more than the ${data.amount} ${data.token} expected. Please contact ${data.merchantName} about a refund.`}
           tone="warning"
@@ -73,7 +74,7 @@ export function CheckoutCard({ invoiceId }: { invoiceId: string }) {
     case 'EXPIRED':
       return (
         <ClosedState
-          icon={<ClockIcon className="h-7 w-7" />}
+          icon={<Icon icon={icons.clock} className="h-7 w-7" />}
           title="Payment link expired"
           body="This checkout session has expired. Please ask the merchant for a new payment link."
         />
@@ -81,7 +82,7 @@ export function CheckoutCard({ invoiceId }: { invoiceId: string }) {
     default:
       return (
         <ClosedState
-          icon={<XCircleIcon className="h-7 w-7" />}
+          icon={<Icon icon={icons.xCircle} className="h-7 w-7" />}
           title="Payment unavailable"
           body={`This invoice is ${data.status.toLowerCase()} and can no longer be paid.`}
         />
@@ -103,7 +104,7 @@ function PendingState({ invoice }: { invoice: CheckoutView }) {
         </p>
         {invoice.description && <p className="mt-2 text-sm text-white/80">{invoice.description}</p>}
         <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium">
-          <ClockIcon className="h-3.5 w-3.5" />
+          <Icon icon={icons.clock} className="h-3.5 w-3.5" />
           {expired ? 'Expiring…' : `Expires in ${formatCountdown(secondsLeft)}`}
         </div>
       </div>
@@ -178,7 +179,7 @@ function AddressField({ address }: { address: string }) {
     >
       <span className="truncate font-mono text-[13px] text-ink-800">{address}</span>
       <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600">
-        <CopyIcon className="h-4 w-4" />
+        <Icon icon={copied ? icons.checkCircle : icons.copy} className="h-4 w-4" />
         {copied ? 'Copied' : 'Copy'}
       </span>
     </button>
@@ -199,7 +200,7 @@ function PaidState({ invoice }: { invoice: CheckoutView }) {
   return (
     <Card className="w-full max-w-md animate-scale-in text-center">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success-50 text-success-600">
-        <CheckCircleIcon className="h-7 w-7" />
+        <Icon icon={icons.checkCircle} className="h-7 w-7" />
       </div>
       <h1 className="mt-4 text-xl font-semibold text-ink-900">Payment confirmed</h1>
       <p className="mt-2 text-sm text-ink-500">

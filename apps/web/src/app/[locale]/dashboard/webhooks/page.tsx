@@ -16,7 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
-import { CopyIcon, WebhookIcon } from '@/components/ui/icons';
+import { Icon } from '@/components/ui/icon';
+import { icons } from '@/components/ui/icons';
 import { ApiError } from '@/lib/api-client';
 
 export default function WebhooksPage() {
@@ -99,7 +100,7 @@ function CreatedSecretBanner({ secret, onDone }: { secret: string; onDone: () =>
           }}
           className="flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600"
         >
-          <CopyIcon className="h-4 w-4" />
+          <Icon icon={copied ? icons.checkCircle : icons.copy} className="h-4 w-4" />
           {copied ? t('copied') : t('copyLink')}
         </button>
       </div>
@@ -173,7 +174,7 @@ function EndpointRow({
     <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.7rem] bg-ink-100 text-ink-500">
-          <WebhookIcon className="h-4.5 w-4.5" />
+          <Icon icon={icons.webhook} className="h-4.5 w-4.5" />
         </span>
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-ink-900">{endpoint.url}</p>

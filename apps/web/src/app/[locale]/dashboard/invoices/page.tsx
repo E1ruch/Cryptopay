@@ -7,7 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge, toneForStatus } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CopyIcon } from '@/components/ui/icons';
+import { Icon } from '@/components/ui/icon';
+import { icons } from '@/components/ui/icons';
 
 export default function InvoicesPage() {
   const t = useTranslations('dashboard.invoices');
@@ -93,7 +94,7 @@ function InvoiceRow({ invoice }: { invoice: InvoiceListItem }) {
           }}
           className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-xs font-medium text-brand-600 transition-colors hover:bg-brand-50"
         >
-          <CopyIcon className="h-3.5 w-3.5" />
+          <Icon icon={copied ? icons.checkCircle : icons.copy} className="h-3.5 w-3.5" />
           {copied ? t('copied') : t('copyLink')}
         </button>
       </div>

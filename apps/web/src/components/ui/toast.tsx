@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
-import { CheckCircleIcon, XCircleIcon } from '@/components/ui/icons';
+import { Icon } from '@/components/ui/icon';
+import { icons } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 
 export type ToastTone = 'success' | 'danger' | 'neutral';
@@ -24,7 +25,7 @@ export function useToast(): ToastContextValue {
   return ctx;
 }
 
-const TONE_ICON = { success: CheckCircleIcon, danger: XCircleIcon, neutral: null };
+const TONE_ICON = { success: icons.checkCircle, danger: icons.xCircle, neutral: null };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
@@ -43,7 +44,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex flex-col items-center gap-2 px-4 md:bottom-6">
         {items.map((item) => {
-          const Icon = TONE_ICON[item.tone];
+          const toneIcon = TONE_ICON[item.tone];
           return (
             <div
               key={item.id}
@@ -54,7 +55,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 item.tone === 'neutral' && 'border-ink-100 bg-white text-ink-800',
               )}
             >
-              {Icon && <Icon className="h-4.5 w-4.5 shrink-0" />}
+              {toneIcon && <Icon icon={toneIcon} className="h-4.5 w-4.5 shrink-0" />}
               {item.message}
             </div>
           );

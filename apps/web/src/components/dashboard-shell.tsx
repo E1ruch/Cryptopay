@@ -6,7 +6,8 @@ import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { apiFetch } from '@/lib/api-client';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ListRow } from '@/components/ui/list-row';
-import { LogoutIcon, NAV_ICONS } from '@/components/ui/icons';
+import { Icon } from '@/components/ui/icon';
+import { icons, NAV_ICONS } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
 
 const NAV_KEYS = [
@@ -52,11 +53,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="space-y-1">
           {NAV_KEYS.map((key, i) => {
-            const Icon = NAV_ICONS[key];
             const route = NAV_ROUTES[key];
             const active = route ? isActiveRoute(pathname, route) : false;
             const row = (
-              <ListRow icon={<Icon className="h-4.5 w-4.5" />} active={active} disabled={!route}>
+              <ListRow icon={<Icon icon={NAV_ICONS[key]} className="h-4.5 w-4.5" />} active={active} disabled={!route}>
                 {t(`nav.${key}`)}
               </ListRow>
             );
@@ -79,7 +79,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               onClick={() => void handleSignOut()}
               className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-sm font-medium text-ink-500 transition-all duration-150 hover:bg-ink-100 hover:text-ink-900 active:scale-[0.97]"
             >
-              <LogoutIcon className="h-4 w-4" />
+              <Icon icon={icons.logout} className="h-4 w-4" />
               <span className="hidden sm:inline">{t('signOut')}</span>
             </button>
           </div>
@@ -90,7 +90,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
       <nav className="fixed inset-x-0 bottom-0 z-10 flex animate-slide-up justify-around border-t border-ink-100 bg-white/95 px-1 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1.5 backdrop-blur md:hidden">
         {NAV_KEYS.map((key) => {
-          const Icon = NAV_ICONS[key];
           const route = NAV_ROUTES[key];
           const active = route ? isActiveRoute(pathname, route) : false;
           const itemClassName = cn(
@@ -99,7 +98,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           );
           const content = (
             <>
-              <Icon className={cn('h-5.5 w-5.5 shrink-0 transition-transform duration-200', active && 'scale-110')} />
+              <Icon
+                icon={NAV_ICONS[key]}
+                className={cn('h-5.5 w-5.5 shrink-0 transition-transform duration-200', active && 'scale-110')}
+              />
               <span className="w-full truncate text-center">{t(`nav.${key}`)}</span>
             </>
           );

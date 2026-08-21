@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
-import { ChevronDownIcon } from '@/components/ui/icons';
+import { Icon } from '@/components/ui/icon';
+import { icons } from '@/components/ui/icons';
 
 export interface SelectOption {
   value: string;
@@ -53,7 +54,8 @@ export function Select({ id, value, onChange, options, className }: SelectProps)
         className="flex w-full items-center justify-between gap-2 rounded-control border border-ink-200 bg-ink-50 px-3.5 py-3 text-left text-[15px] text-ink-900 transition-colors focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
       >
         <span className="truncate">{selected?.label ?? ''}</span>
-        <ChevronDownIcon
+        <Icon
+          icon={icons.chevronDown}
           className={cn('h-4 w-4 shrink-0 text-ink-400 transition-transform duration-200', open && 'rotate-180')}
         />
       </button>
